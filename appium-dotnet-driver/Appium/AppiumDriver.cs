@@ -28,6 +28,7 @@ using System.Linq;
 using System.Reflection;
 using OpenQA.Selenium.Appium.src.Appium.Interfaces;
 using System.Diagnostics.Contracts;
+using Newtonsoft.Json;
 
 namespace OpenQA.Selenium.Appium
 {
@@ -35,7 +36,7 @@ namespace OpenQA.Selenium.Appium
     /// Provides a way to access Appium to run your tests by creating a AppiumDriver instance
     /// </summary>
     /// <remarks>
-    /// When the WebDriver object has been instantiated the browser will load. The test can then navigate to the URL under test and 
+    /// When the WebDriver object has been instantiated the browser will load. The test can then navigate to the URL under test and
     /// start your test.
     /// </remarks>
     /// <example>
@@ -65,7 +66,7 @@ namespace OpenQA.Selenium.Appium
     ///     {
     ///         driver.Quit();
     ///         driver.Dispose();
-    ///     } 
+    ///     }
     /// }
     /// </code>
     /// </example>
@@ -320,7 +321,7 @@ namespace OpenQA.Selenium.Appium
         /// Rotates Device.
         /// </summary>
         /// <param name="opts">rotations options like the following:
-        /// new Dictionary<string, int> {{"x", 114}, {"y", 198}, {"duration", 5}, 
+        /// new Dictionary<string, int> {{"x", 114}, {"y", 198}, {"duration", 5},
         /// {"radius", 3}, {"rotation", 220}, {"touchCount", 2}}
         /// </param>
         public void Rotate(Dictionary<string, int> opts)
@@ -393,15 +394,15 @@ namespace OpenQA.Selenium.Appium
         /// </example>
         public void StartActivity(string appPackage, string appActivity, string appWaitPackage = "", string appWaitActivity = "")
         {
-        	Contract.Requires(!String.IsNullOrWhiteSpace(appPackage));
-        	Contract.Requires(!String.IsNullOrWhiteSpace(appActivity));
+          Contract.Requires(!String.IsNullOrWhiteSpace(appPackage));
+          Contract.Requires(!String.IsNullOrWhiteSpace(appActivity));
 
-        	Dictionary<string, object> parameters = new Dictionary<string, object>() { {"appPackage", appPackage},
-        																			   {"appActivity", appActivity},
-        																			   {"appWaitPackage", appWaitPackage},
-        																			   {"appWaitActivity", appWaitActivity} };
+          Dictionary<string, object> parameters = new Dictionary<string, object>() { {"appPackage", appPackage},
+              {"appActivity", appActivity},
+              {"appWaitPackage", appWaitPackage},
+              {"appWaitActivity", appWaitActivity} };
 
-        	this.Execute(AppiumDriverCommand.StartActivity, parameters);
+          this.Execute(AppiumDriverCommand.StartActivity, parameters);
         }
 
         /// <summary>
@@ -498,7 +499,7 @@ namespace OpenQA.Selenium.Appium
         /// </summary>
         /// <param name="intent">a string containing the intent.</param>
         /// <param name="path">a string containing the path.</param>
-        /// <return>a base64 string containing the data</return> 
+        /// <return>a base64 string containing the data</return>
         public string EndTestCoverage(string intent, string path)
         {
             Dictionary<string, object> parameters = new Dictionary<string, object>();
@@ -536,7 +537,7 @@ namespace OpenQA.Selenium.Appium
         }
 
         /// <summary>
-        /// Open the notifications 
+        /// Open the notifications
         /// </summary>
         public void OpenNotifications()
         {
@@ -588,11 +589,11 @@ namespace OpenQA.Selenium.Appium
 
         #region Orientation
         /// <summary>
-        /// Return the Screen Orientation of the device 
+        /// Return the Screen Orientation of the device
         /// </summary>
         /// <returns>Screen Orientation</returns>
         /// <remarks>
-        /// Throws Null exception if not valid server response. 
+        /// Throws Null exception if not valid server response.
         /// Throws ArgumentOutOfRangeException if server response is not a valid Orientation.
         /// </remarks>
         public ScreenOrientation GetOrientation()
@@ -741,11 +742,45 @@ namespace OpenQA.Selenium.Appium
 
         #endregion Multi Actions
 
+        #region Settings
+
+        /// <summary>
+        /// Get appium settings currently set for the session
+        /// See: https://github.com/appium/appium/blob/master/docs/en/advanced-concepts/settings.md
+        /// </summary>
+        public Dictionary<String, Object> GetSettings()
+        {
+          var commandResponse = this.Execute(AppiumDriverCommand.GetSettings, null);
+          return JsonConvert.DeserializeObject<Dictionary<String, Object>>((String) commandResponse.Value);
+        }
+
+        /// <summary>
+        /// Set "ignoreUnimportantViews" setting.
+        /// See: https://github.com/appium/appium/blob/master/docs/en/advanced-concepts/settings.md
+        /// </summary>
+        public void IgnoreUnimportantViews(bool value)
+        {
+          this.UpdateSetting ("ignoreUnimportantViews", value);
+        }
+
+        /// <summary>
+        /// Update an appium Setting, on the session
+        /// </summary>
+        private void UpdateSetting(String setting, Object value)
+        {
+          var parameters = new Dictionary<string, object>();
+          var settings = new Dictionary<string, object>();
+          settings.Add(setting, value);
+          parameters.Add("settings", settings);
+          this.Execute(AppiumDriverCommand.UpdateSettings, parameters);
+        }
+        #endregion Settings
+
         #endregion Public Methods
 
         #region Internal Methods
         /// <summary>
-        /// Executes commands with the driver 
+        /// Executes commands with the driver
         /// </summary>
         /// <param name="driverCommandToExecute">Command that needs executing</param>
         /// <param name="parameters">Parameters needed for the command</param>
@@ -862,6 +897,8 @@ namespace OpenQA.Selenium.Appium
                 new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.HideKeyboard, "/session/{sessionId}/appium/device/hide_keyboard"),
                 new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.OpenNotifications, "/session/{sessionId}/appium/device/open_notifications"),
                 new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.StartActivity, "/session/{sessionId}/appium/device/start_activity"),
+                new _Commands(CommandInfo.GetCommand,  AppiumDriverCommand.GetSettings, "/session/{sessionId}/appium/settings"),
+                new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.UpdateSettings, "/session/{sessionId}/appium/settings"),
                 #endregion Appium Commands
                 #region Touch Commands
                 new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.MultiActionV2Perform, "/session/{sessionId}/touch/multi/perform"),
@@ -880,10 +917,10 @@ namespace OpenQA.Selenium.Appium
                 new _Commands(CommandInfo.GetCommand, AppiumDriverCommand.IsIMEActive, "/session/{sessionId}/ime/activated"),
                 new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.ActivateEngine, "/session/{sessionId}/ime/activate"),
                 new _Commands(CommandInfo.PostCommand, AppiumDriverCommand.DeactivateEngine, "/session/{sessionId}/ime/deactivate"),
-                #endregion Input Method (IME) 
+                #endregion Input Method (IME)
 
                 #endregion JSON Wire Protocol Commands
-                
+
             };
 
             // Add the custom commandInfo of AppiumDriver
@@ -906,12 +943,12 @@ namespace OpenQA.Selenium.Appium
         private class _Commands
         {
             /// <summary>
-            /// command type 
+            /// command type
             /// </summary>
             internal readonly string CommandType;
 
             /// <summary>
-            /// Command 
+            /// Command
             /// </summary>
             internal readonly string Command;
 
